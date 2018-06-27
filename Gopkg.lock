@@ -847,7 +847,6 @@
     "pkg/kubectl/cmd/util/openapi",
     "pkg/kubectl/cmd/util/openapi/validation",
     "pkg/kubectl/plugins",
-    "pkg/kubectl/proxy",
     "pkg/kubectl/resource",
     "pkg/kubectl/scheme",
     "pkg/kubectl/util",
@@ -912,6 +911,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "34f07baa377d3d211966b9e850bdaaf28866358bd28845b76524a4fd4391038f"
+  inputs-digest = "3ea02b8541011344406b1e8e4fe00c28d51304c998a1575877e7fdf18e226f25"
   solver-name = "gps-cdcl"
   solver-version = 1
