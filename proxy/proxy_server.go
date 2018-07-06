@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -34,6 +35,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	k8sproxy "k8s.io/apimachinery/pkg/util/proxy"
 	"k8s.io/client-go/rest"
@@ -186,7 +188,7 @@ func makeUpgradeTransport(config *rest.Config) (k8sproxy.UpgradeRequestRoundTrip
 
 // NewServer creates and installs a new Server.
 // 'filter', if non-nil, protects requests to the api only.
-func NewServer(apiProxyPrefix string, filter *FilterServer, cfg *rest.Config, reference metav1.OwnerReference) (*Server, error) {
+func NewServer(apiProxyPrefix string, filter *FilterServer, cfg *rest.Config) (*Server, error) {
 	host := cfg.Host
 	if !strings.HasSuffix(host, "/") {
 		host = host + "/"
@@ -215,7 +217,7 @@ func NewServer(apiProxyPrefix string, filter *FilterServer, cfg *rest.Config, re
 		proxyServer = stripLeaveSlash(apiProxyPrefix, proxyServer)
 	}
 
-	proxyServer = injectOwnerReference(reference, proxyServer)
+	proxyServer = injectOwnerReference(proxyServer)
 
 	mux := http.NewServeMux()
 	mux.Handle(apiProxyPrefix, proxyServer)
@@ -261,9 +263,25 @@ func singleJoiningSlash(a, b string) string {
 	return a + b
 }
 
-func injectOwnerReference(reference metav1.OwnerReference, h http.Handler) http.Handler {
+func injectOwnerReference(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method == "POST" {
+			auth := map[string]string{}
+			user, _, _ := req.BasicAuth()
+			authString, err := base64.StdEncoding.DecodeString(user)
+			if err != nil {
+				panic(err)
+			}
+			json.Unmarshal(authString, &auth)
+
+			reference := metav1.OwnerReference{
+				APIVersion: auth["apiVersion"],
+				Kind:       auth["kind"],
+				Name:       auth["name"],
+				UID:        types.UID(auth["uid"]),
+			}
+			log.Printf("%#+v", reference)
+
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
 				panic(err)

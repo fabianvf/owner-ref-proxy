@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	proxy "github.com/fabianvf/owner-ref-proxy/proxy"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
@@ -68,10 +66,6 @@ func NewCmdProxy(f cmdutil.Factory) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringP("api-prefix", "", "/", "Prefix to serve the proxied API under.")
-	cmd.Flags().StringP("owner-uid", "i", "", "UID of the owner of objects created through this proxy.")
-	cmd.Flags().StringP("owner-kind", "k", "", "kind of the owner of objects created through this proxy.")
-	cmd.Flags().StringP("owner-name", "n", "", "name of the owner of objects created through this proxy.")
-	cmd.Flags().StringP("owner-api-version", "v", "", "APIVersion of the owner of objects created through this proxy.")
 	cmd.Flags().String("accept-paths", proxy.DefaultPathAcceptRE, "Regular expression for paths that the proxy should accept.")
 	cmd.Flags().String("reject-paths", proxy.DefaultPathRejectRE, "Regular expression for paths that the proxy should reject. Paths specified here will be rejected even accepted by --accept-paths.")
 	cmd.Flags().String("accept-hosts", proxy.DefaultHostAcceptRE, "Regular expression for hosts that the proxy should accept.")
@@ -107,17 +101,7 @@ func RunProxy(f cmdutil.Factory, cmd *cobra.Command) error {
 		RejectMethods: proxy.MakeRegexpArrayOrDie(cmdutil.GetFlagString(cmd, "reject-methods")),
 	}
 
-	reference := metav1.OwnerReference{
-		APIVersion: cmdutil.GetFlagString(cmd, "owner-api-version"),
-		Kind:       cmdutil.GetFlagString(cmd, "owner-kind"),
-		Name:       cmdutil.GetFlagString(cmd, "owner-name"),
-		UID:        types.UID(cmdutil.GetFlagString(cmd, "owner-uid")),
-	}
-	if reference.APIVersion == "" || reference.Kind == "" || reference.Name == "" || reference.UID == "" {
-		glog.Fatalf("You must provide APIVersion, kind, name and UID for the owner")
-	}
-
-	server, err := proxy.NewServer(apiProxyPrefix, filter, clientConfig, reference)
+	server, err := proxy.NewServer(apiProxyPrefix, filter, clientConfig)
 
 	// Separate listening from serving so we can report the bound port
 	// when it is chosen by os (eg: port == 0)
